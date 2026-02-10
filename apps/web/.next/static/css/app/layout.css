@@ -519,6 +519,9 @@ video {
 [hidden]:where(:not([hidden="until-found"])) {
   display: none;
 }
+.table {
+  display: table;
+}
 .antialiased {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

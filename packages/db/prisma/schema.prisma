@@ -11,10 +11,10 @@ model User {
   id             String            @id @default(cuid())
   email          String            @unique
   password       String?
-  emailVerified  Boolean           @default(false)
+  emailVerified  DateTime?           
   name           String?
   image          String?
-  role           Role
+  role Role @default(ECD_USER)
   isActive       Boolean           @default(true)
   isFrozen       Boolean           @default(false)
   createdAt      DateTime          @default(now())
@@ -87,6 +87,7 @@ model Session {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([expiresAt])
 }
 
 model Account {
