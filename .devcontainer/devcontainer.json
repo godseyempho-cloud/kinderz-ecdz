@@ -1,6 +1,6 @@
 {
   "name": "Kinderz ECD Dev",
-  "image": "node:20-bullseye-slim",
+  "image": "node:18-bullseye-slim",
   "features": {
     "ghcr.io/devcontainers/features/git:1": {}
   },
