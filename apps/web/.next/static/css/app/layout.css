@@ -519,6 +519,9 @@ video {
 [hidden]:where(:not([hidden="until-found"])) {
   display: none;
 }
+.flex {
+  display: flex;
+}
 .table {
   display: table;
 }
