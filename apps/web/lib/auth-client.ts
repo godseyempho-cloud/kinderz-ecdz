@@ -2,5 +2,5 @@
 import { createAuthClient } from "better-auth/react";
 
 export const authClient = createAuthClient({
-    baseURL: process.env.BETTER_AUTH_URL // Your site URL
+    baseURL: "https://zany-umbrella-pjq645v6jvq62769g-3000.app.github.dev", // Your site URL
 });

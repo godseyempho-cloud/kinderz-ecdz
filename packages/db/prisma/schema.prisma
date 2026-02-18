@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  output   = "../../../node_modules/.prisma/client"
 }
 
 datasource db {
@@ -15,6 +16,7 @@ model User {
   name           String?
   image          String?
   role           Role              @default(ECD_USER)
+  banned        Boolean   @default(false) // Add this line
   isActive       Boolean           @default(true)
   isFrozen       Boolean           @default(false)
   createdAt      DateTime          @default(now())

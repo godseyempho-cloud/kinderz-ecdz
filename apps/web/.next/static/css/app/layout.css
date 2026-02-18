@@ -525,6 +525,9 @@ video {
 .table {
   display: table;
 }
+.p-8 {
+  padding: 2rem;
+}
 .antialiased {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

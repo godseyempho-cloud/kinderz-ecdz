@@ -19,4 +19,6 @@
 import { auth } from "@/lib/betterAuth"; // Adjust this path to your auth config file
 import { toNextJsHandler } from "better-auth/next-js";
 
+console.log("AUTH ROUTE TRIGGERED"); // If this doesn't show in terminal, the proxy is broken
+
 export const { GET, POST } = toNextJsHandler(auth);
