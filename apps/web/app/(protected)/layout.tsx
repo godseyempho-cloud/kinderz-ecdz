@@ -28,7 +28,7 @@ export default async function ProtectedLayout({
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-500">{session.user.email}</span>
             {/* We will add a logout button here in the next step */}
-            <SignOutButton />
+            <SignOutButton /> 
           </div>
         </div>
       </nav>
