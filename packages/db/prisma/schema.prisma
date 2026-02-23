@@ -21,38 +21,68 @@ model User {
   isFrozen       Boolean           @default(false)
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
-  ecdCenterId    String?
+  ecdCenterId    String? // Links ECD_USER/SUPERVISOR to their center for multi-tenancy isolation
+  districtId     String? // Links AUDITOR to their district; prevents viewing other districts
+  assignedById   String? // Tracks which AUDITOR assigned this user; ensures audit trail
   documents      Document[]
   ecdCenter      EcdCenter?
+  district       District? @relation(fields: [districtId], references: [id]) // AUDITOR's district scope
+  assignedBy     User?  @relation("AssignedUsers", fields: [assignedById], references: [id]) // Who assigned me
+  assignedUsers  User[] @relation("AssignedUsers") // Users I (Auditor) assigned
   reviewedProofs PaymentProof[]    @relation("ReviewedPayments")
   paymentProofs  PaymentProof[]    @relation("UploadedPayments")
   reports        QuarterlyReport[] @relation("CreatedReports")
+  auditFindingsReviewed AuditFinding[] @relation("FindingReviewedBy") // PROVINCIAL findings this user approved/flagged
   accounts       Account[]
   sessions       Session[]
   verifications  Verification[]
 
   @@index([role])
   @@index([ecdCenterId])
+  @@index([districtId]) // Speed up AUDITOR district-level queries
   @@map("user")
+}
+
+model Province {
+  id       String     @id @default(cuid())
+  name     String     // Province name; PROVINCIAL user manages exactly one province
+  districts District[] // All districts within this province
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@index([name]) // Speed up PROVINCIAL user lookups
+}
+
+model District {
+  id         String       @id @default(cuid())
+  name       String       // District name (e.g., "District A")
+  provinceId String       // Foreign key to Province; enforces hierarchy: Province → District → EcdCenter for PROVINCIAL role isolation
+  province   Province     @relation(fields: [provinceId], references: [id], onDelete: Cascade) // Links to parent Province
+  auditors   User[]       // Auditors assigned to this district via districtId; stores their districtId
+  ecdCenters EcdCenter[]  // Centers in district; created by PROVINCIAL, reviewed by AUDITOR in this district
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@index([provinceId]) // Speed up PROVINCIAL user's district lookups
 }
 
 model EcdCenter {
   id            String            @id @default(cuid())
   name          String
-  district      String
-  province      String
+  districtId    String            // Foreign key to District; ensures center belongs to exactly one district
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
-  supervisorId  String?           @unique
+  supervisorId  String?           @unique // One SUPERVISOR per center; database enforced
   children      Child[]
   documents     Document[]
+  district      District          @relation(fields: [districtId], references: [id], onDelete: Cascade) // Multi-tenancy anchor
   supervisor    User?             @relation(fields: [supervisorId], references: [id])
   practitioners Practitioner[]
   reports       QuarterlyReport[]
+  monthlyReports MonthlyReport[]  // One-to-many relationship for monthly data ingestion (Supervisor submissions)
   subscription  Subscription?
 
-  @@index([district])
-  @@index([province])
+  @@index([districtId]) // Speed up district-level queries for AUDITOR & PROVINCIAL
 }
 
 model Subscription {
@@ -73,6 +103,7 @@ model PaymentProof {
   uploadedById   String
   category       DocumentCategory
   fileUrl        String
+  comment        String?          // What the payment is for (e.g., "Food for Jan 2026", "Salary - Nov 2025"); filled by SUPERVISOR/ECD_USER
   status         PaymentStatus    @default(PENDING)
   reviewedById   String?
   createdAt      DateTime         @default(now())
@@ -160,12 +191,21 @@ model QuarterlyReport {
   year        Int
   quarter     Int
   status      SubmissionStatus
+  // NARRATIVE: Supervisor fills these sections in the Quarterly Progress Report
+  programmeName String?               // e.g., "Early Childhood Development Programme"
+  achievements  String?               // Summary of key achievements during the quarter
+  challenges    String?               // Summary of challenges encountered during the quarter
+  totalIncome Decimal               @default(0) // Level 2 financial ingestion: SUPERVISOR enters total income for verification against uploaded payment proofs
+  totalExpenses Decimal             @default(0) // Level 2 financial ingestion: SUPERVISOR enters total expenses for verification against uploaded payment proofs
+  notes       String?               // SUPERVISOR explains financial deviances or unusual patterns for AUDITOR context
+  // COMPLIANCE: snapshot of the 80% attendance rule (computed at submission)
+  is80PercentAttend Boolean?        // true if >=80% attendance during the quarter; stored as snapshot
   isLate      Boolean               @default(false)
   submittedAt DateTime?
   ecdCenterId String
   createdById String
   createdAt   DateTime              @default(now())
-  updatedAt   DateTime              @updatedAt
+  updatedAt   DateTime  @updatedAt
   attendance  Attendance[]
   findings    AuditFinding?
   documents   Document[]
@@ -198,10 +238,12 @@ model Document {
   uploadedById String
   ecdCenterId  String
   reportId     String?
+  monthlyReportId String? // Link document to a MonthlyReport when supporting monthly submissions
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
   ecdCenter    EcdCenter        @relation(fields: [ecdCenterId], references: [id], onDelete: Cascade)
   report       QuarterlyReport? @relation(fields: [reportId], references: [id])
+  monthlyReport MonthlyReport?  @relation(fields: [monthlyReportId], references: [id])
   uploadedBy   User             @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
 }
 
@@ -217,15 +259,65 @@ model FinancialAllocation {
 }
 
 model AuditFinding {
-  id        String          @id @default(cuid())
-  comments  String
-  compliant Boolean
-  reportId  String          @unique
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
-  report    QuarterlyReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  id          String          @id @default(cuid())
+  comments    String          // AUDITOR's detailed findings and observations
+  compliant   Boolean         // Quick compliance flag
+  status      FindingStatus   @default(PENDING) // Audit workflow: PENDING (awaiting review) → APPROVED (funding released) | FLAGGED (futher investigation) | CORRECTIONS_REQUIRED (needs remediation)
+  reviewedById String?        // PROVINCIAL official who made the final funding decision; tracks accountability for approval/denial
+  reportId    String          @unique
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  report      QuarterlyReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  reviewedBy  User?           @relation("FindingReviewedBy", fields: [reviewedById], references: [id]) // PROVINCIAL who reviewed this finding
 }
 
+
+// Monthly reports capture the month-by-month allocation and expenditure details
+// The Supervisor fills these; they are later rolled up into QuarterlyReport
+model MonthlyReport {
+  id                 String             @id @default(cuid())
+  year               Int                // e.g., 2025
+  month              Int                // 1-12
+  ecdCenterId        String
+  submittedById      String             // Supervisor or ECD_USER who submitted the monthly report
+  allocation         Decimal            @default(0) // Allocation received for this month
+  totalExpenditure   Decimal            @default(0) // Sum of categorized expenditures for quick validation
+  salariesExpense    Decimal?           @default(0) // Breakdown for Level 2 financial ingestion (optional)
+  foodExpense        Decimal?           @default(0)
+  overheadsExpense   Decimal?           @default(0)
+  otherExpense       Decimal?           @default(0)
+  // AUDITOR reconciliation values (Dep Calculations) — optional, filled by the Auditor during review
+  salariesDepCalc    Decimal?           @default(0)
+  foodDepCalc        Decimal?           @default(0)
+  overheadsDepCalc   Decimal?           @default(0)
+  attendanceCount    Int?               // Number of children on attendance register that month
+  childrenFunded     Int?               // Number of children funded that month
+  notes              String?            // Supervisor notes for the month (explain large variances)
+  submittedAt        DateTime?
+  signatureUrl       String?            // Optional upload of signature image/proof
+  documents          Document[]         // Supporting attachments (bank statements, payslips, receipts)
+  allocations        MonthlyAllocation[] // Line-item allocations for this month
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  ecdCenter          EcdCenter          @relation(fields: [ecdCenterId], references: [id], onDelete: Cascade)
+  submittedBy        User               @relation(fields: [submittedById], references: [id], onDelete: Cascade)
+
+  @@unique([ecdCenterId, year, month])
+  @@index([ecdCenterId])
+}
+
+// MonthlyAllocation represents categorical allocations/expenditures for the monthly report
+model MonthlyAllocation {
+  id         String    @id @default(cuid())
+  reportId   String
+  category   DocumentCategory
+  amount     Decimal
+  date       DateTime
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  report     MonthlyReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+}
 enum Role {
   ADMIN
   SUPERVISOR
@@ -263,4 +355,11 @@ enum PaymentStatus {
   PENDING
   VERIFIED
   REJECTED
+}
+
+enum FindingStatus {
+  PENDING         // AUDITOR submitted finding, awaiting PROVINCIAL review for funding decision
+  APPROVED        // PROVINCIAL approved funding for this center; positive audit result
+  FLAGGED         // PROVINCIAL flagged for further investigation; center compliance incomplete
+  CORRECTIONS_REQUIRED // Center must remediate issues before funding is released; action items assigned
 }
