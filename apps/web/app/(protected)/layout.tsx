@@ -1,7 +1,6 @@
-import { auth } from "@/lib/betterAuth";
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { SignOutButton } from "@/components/auth/sign-out-button";
+import { getSession } from "@/lib/get-session";
 
 
 export default async function ProtectedLayout({
@@ -9,12 +8,14 @@ export default async function ProtectedLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Layer 2 Security: Server-side session check
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  // Layer 2 Security: Enriched session check
+  // getSession():
+  //   - Returns null if user is banned/frozen/inactive
+  //   - Returns enriched session with role, ecdCenterId, districtId
+  //   - Queries DB to ensure user status is current
+  const session = await getSession();
 
-  // If the user is not authenticated, kick them back to the public Entryway
+  // Redirect unauthenticated OR blocked users (banned, frozen, inactive) back to login
   if (!session) {
     redirect("/login");
   }
@@ -26,8 +27,19 @@ export default async function ProtectedLayout({
         <div className="flex justify-between items-center max-w-7xl mx-auto">
           <span className="font-bold text-blue-800">Kinderz-ECD System</span>
           <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-500">{session.user.email}</span>
-            {/* We will add a logout button here in the next step */}
+            {/* Display user info + role for context */}
+            <div className="text-sm text-gray-600">
+              <div className="font-semibold">{session.user.email}</div>
+              <div className="text-xs text-gray-500">
+                Role: <span className="font-mono">{session.user.role}</span>
+              </div>
+              {/* Show jurisdiction hint for Auditor/Supervisor/ECD_USER */}
+              {session.user.ecdCenterId && (
+                <div className="text-xs text-gray-500">
+                  Center ID: <span className="font-mono">{session.user.ecdCenterId}</span>
+                </div>
+              )}
+            </div>
             <SignOutButton /> 
           </div>
         </div>

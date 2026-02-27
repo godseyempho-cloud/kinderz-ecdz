@@ -32,6 +32,7 @@ model User {
   reviewedProofs PaymentProof[]    @relation("ReviewedPayments")
   paymentProofs  PaymentProof[]    @relation("UploadedPayments")
   reports        QuarterlyReport[] @relation("CreatedReports")
+  monthlyReports MonthlyReport[]   @relation("MonthlySubmissions")
   auditFindingsReviewed AuditFinding[] @relation("FindingReviewedBy") // PROVINCIAL findings this user approved/flagged
   accounts       Account[]
   sessions       Session[]
@@ -280,6 +281,7 @@ model MonthlyReport {
   month              Int                // 1-12
   ecdCenterId        String
   submittedById      String             // Supervisor or ECD_USER who submitted the monthly report
+  submittedBy        User               @relation("MonthlySubmissions", fields: [submittedById], references: [id], onDelete: Cascade)
   allocation         Decimal            @default(0) // Allocation received for this month
   totalExpenditure   Decimal            @default(0) // Sum of categorized expenditures for quick validation
   salariesExpense    Decimal?           @default(0) // Breakdown for Level 2 financial ingestion (optional)
@@ -299,10 +301,12 @@ model MonthlyReport {
   allocations        MonthlyAllocation[] // Line-item allocations for this month
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
+  // REVIEW TRACKING: filled by the Auditor when they complete the monitoring tool
+  reviewedById       String?            // user.id of the auditor who reviewed this month
+  reviewedAt         DateTime?          // timestamp of that review
 
   ecdCenter          EcdCenter          @relation(fields: [ecdCenterId], references: [id], onDelete: Cascade)
-  submittedBy        User               @relation(fields: [submittedById], references: [id], onDelete: Cascade)
-
+  
   @@unique([ecdCenterId, year, month])
   @@index([ecdCenterId])
 }
