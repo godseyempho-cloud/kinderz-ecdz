@@ -15,7 +15,7 @@ export async function PATCH(
     const session = await requireSession();
     requireRole(session, ["AUDITOR"]);
 
-    const reportId = params.id;
+    const reportId = params.id; 
 
     // load existing report with center/district so we can apply district guard
     const existing = await prisma.monthlyReport.findUnique({

@@ -13,6 +13,7 @@ export interface EnrichedSession {
         role: string; // ADMIN, PROVINCIAL, SUPERVISOR, AUDITOR, ECD_USER
         ecdCenterId: string | null; // Jurisdiction: which center this user belongs to
         districtId: string | null; // Jurisdiction: which district this user belongs to
+        provinceId: string | null; // Jurisdiction: which province this user belongs to
         isActive: boolean; // false = blocked from all access
         isFrozen: boolean; // false = account temporarily locked
         banned: boolean; // false = account permanently locked
@@ -43,6 +44,7 @@ export async function getSession(): Promise<EnrichedSession | null> {
                     role: true,
                     ecdCenterId: true,
                     districtId: true,
+                    provinceId: true,
                     isActive: true,
                     isFrozen: true,
                     banned: true,
@@ -69,6 +71,7 @@ export async function getSession(): Promise<EnrichedSession | null> {
                     role: user.role, // Now includes ADMIN, PROVINCIAL, etc.
                     ecdCenterId: user.ecdCenterId, // null for Admin/Provincial; set for SUPERVISOR/ECD_USER
                     districtId: user.districtId, // null for non-Auditor; set for AUDITOR
+                    provinceId: user.provinceId, // null for non-Provincial; set for PROVINCIAL
                     isActive: user.isActive,
                     isFrozen: user.isFrozen,
                     banned: user.banned,

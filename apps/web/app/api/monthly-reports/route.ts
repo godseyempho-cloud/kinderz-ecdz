@@ -80,7 +80,24 @@ export async function POST(req: Request) {
     }
 
     // 4. Enforce center-level access
+    // also load center to verify funding status
+    const center = await prisma.ecdCenter.findUnique({ where: { id: ecdCenterId } });
+    if (!center) {
+      throw new ApiError(404, "ECD center not found");
+    }
+    if (center.fundingStatus === "DISCONTINUED") {
+      throw new ApiError(403, "Center is closed");
+    }
     requireCenterAccess(session, ecdCenterId);
+
+    // OPTIONAL: prevent ECD_USERs from calling via desktop/web client by checking user-agent
+    if (session.user.role === "ECD_USER") {
+      const ua = req.headers.get("user-agent") || "";
+      const isWeb = /Mozilla|Chrome|Safari/i.test(ua);
+      if (isWeb) {
+        throw new ApiError(403, "ECD users must use mobile app");
+      }
+    }
 
     // 5. Compute totals and perform server-side sanity checks
     // const totalExpenditure = allocations.reduce(
@@ -94,7 +111,9 @@ const totalExpenditure = allocations.reduce(
   0
 );
 
-    // 6. Persist to database
+    // 6. Create report in DRAFT status, allowing supervisor to edit before final submission
+    // status: "DRAFT" means the supervisor can still modify this report.
+    // When they click "Submit", the status moves to "SUBMITTED" and locks further edits.
     const report = await prisma.monthlyReport.create({
       data: {
         year,
@@ -111,7 +130,8 @@ const totalExpenditure = allocations.reduce(
         childrenFunded,
         notes,
         signatureUrl,
-        submittedAt: new Date(),
+        status: "DRAFT", // New reports start in DRAFT; supervisor can edit freely
+        // submittedAt remains null until the supervisor explicitly submits (status -> SUBMITTED)
         allocations: {
           create: allocations.map((a: AllocationInput) => ({
             category: a.category,

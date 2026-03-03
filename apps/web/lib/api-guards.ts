@@ -75,7 +75,34 @@ export function requireCenterAccess(
 }
 
 // -------------------------
-// Guard 4: requireDistrictAccess
+// Guard 4: requireProvinceAccess
+// -------------------------
+// Purpose: Ensure the user can access a specific Province.
+// Rules implemented here:
+// - ADMIN: full access to all provinces
+// - PROVINCIAL: must be assigned to the target province (cross-province access prevented)
+// - Other roles: should not call this guard; deny by omission
+export function requireProvinceAccess(
+  session: EnrichedSession,
+  targetProvinceId: string
+): void {
+  // ADMIN bypass
+  if (session.user.role === "ADMIN") return;
+
+  // PROVINCIAL: must be assigned to the target province
+  if (session.user.role === "PROVINCIAL") {
+    if (session.user.provinceId !== targetProvinceId) {
+      throw new ApiError(403, `Forbidden: You do not have access to province ${targetProvinceId}`);
+    }
+    return; // allowed
+  }
+
+  // Other roles (SUPERVISOR, ECD_USER, AUDITOR) should not call this guard
+  throw new ApiError(403, "Forbidden: Insufficient privileges for province access");
+}
+
+// -------------------------
+// Guard 5: requireDistrictAccess 
 // -------------------------
 // Purpose: Ensure the user can access a specific District.
 // Rules implemented here:
@@ -99,13 +126,29 @@ export function requireDistrictAccess(
     }
     return; // allowed
   }
-
+ 
   // Other roles (SUPERVISOR, ECD_USER) should not call this guard; if they do, deny by omission.
   throw new ApiError(403, "Forbidden: Insufficient privileges for district access");
 }
 
 // -------------------------
-// Guard 5: preventSelfReview
+// Guard 6: isReportLocked
+// -------------------------
+// Purpose: Ensure a monthly report is not locked preventing supervisor edits.
+// - status: the report's current status (DRAFT, SUBMITTED, LATE, REVIEWED, APPROVED)
+// - allowedStatuses: which statuses permit editing (default: only DRAFT)
+// Used to prevent double edits: once SUBMITTED, supervisor cannot modify until auditor flags CORRECTIONS_REQUIRED
+export function isReportLocked(
+  status: string,
+  allowedStatuses: string[] = ["DRAFT"]
+): void {
+  if (!allowedStatuses.includes(status)) {
+    throw new ApiError(403, `Report is locked. Current status: ${status}. Editing only allowed in [${allowedStatuses.join(", ")}]`);
+  }
+}
+
+// -------------------------
+// Guard 7: preventSelfReview 
 // -------------------------
 // Purpose: Prevent a user from reviewing their own upload (conflict of interest).
 // - uploadedById: the user who uploaded the resource
@@ -123,7 +166,7 @@ export function preventSelfReview(uploadedById: string, reviewedById: string): v
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
     super(message);
-    this.name = "ApiError";
+    this.name = "ApiError"; 
   }
 }
 
