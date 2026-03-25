@@ -5,7 +5,7 @@ import { z } from "zod";
 
 const attendanceSchema = z.object({
   date: z.string(), // "YYYY-MM-DD"
-  records: z.array(
+  records: z.array(   
     z.object({
       childId: z.string(),
       status: z.enum(["PRESENT", "ABSENT", "SICK"]),
