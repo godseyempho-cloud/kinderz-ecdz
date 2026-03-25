@@ -309,7 +309,7 @@ model FinancialAllocation {
 
 model AuditFinding {
   id           String          @id @default(cuid())
-  comments     String
+  comments     String[]
   compliant    Boolean
   status       FindingStatus   @default(PENDING)
   reviewedById String?
@@ -443,6 +443,7 @@ enum DocumentCategory {
 enum SubmissionStatus {
   DRAFT
   SUBMITTED
+  SUBMITTED_TO_PROVINCE // For provincial review process
   LATE
   REVIEWED
   APPROVED
@@ -472,4 +473,5 @@ enum FindingStatus {
   APPROVED
   FLAGGED
   CORRECTIONS_REQUIRED
+  RESOLVED_BY_SUPERVISOR // Add this status to allow supervisors to resolve findings without needing provincial intervention
 }
