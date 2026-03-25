@@ -9,13 +9,13 @@
     "forceConsistentCasingInFileNames": true,
     "noEmit": true,
     "esModuleInterop": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+
+    "types": ["node", "next"], // <-- added so Node globals (process, crypto) and Next types resolve everywhere
+
+    "baseUrl": ".", // <-- added so paths work relative to repo root
+    "paths": {
+      "@kinderz/db": ["packages/db/index.ts"] // <-- added alias for db package
+    }
   }
 }
-
-
-
-
-
-
-

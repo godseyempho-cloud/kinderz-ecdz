@@ -202,6 +202,75 @@
 
 
 
+// import { betterAuth } from "better-auth";
+// import { prismaAdapter } from "better-auth/adapters/prisma";
+// import { prisma } from "@kinderz/db"; 
+// import { admin } from "better-auth/plugins";
+// import { nextCookies } from "better-auth/next-js";
+
+// // REQUIRED by your adapter version for PostgreSQL
+// const adapterConfig = {
+//   provider: "postgresql" as const,
+// };
+
+// export const auth = betterAuth({
+//   // 1. Database Setup
+//   database: prismaAdapter(prisma, adapterConfig),
+
+//   baseURL: "https://zany-umbrella-pjq645v6jvq62769g-3000.app.github.dev",
+
+//   // 2. Security & Origin Configuration
+//   secret: process.env.BETTER_AUTH_SECRET!,
+
+//   // In 1.4.7, we use trustedOrigins + useSecureCookies to bypass the origin block in Codespaces
+//   advanced: {
+//     // 1. Tell Better Auth it is behind a proxy (Codespaces)
+//     useSecureCookies: true, 
+//     // 2. This is the "Magic" setting for 1.4.7 to trust proxy headers
+//     trustHost: true, 
+//   },
+
+//   // This tells the server exactly which URLs to trust
+//   trustedOrigins: [
+//     "https://zany-umbrella-pjq645v6jvq62769g-3000.app.github.dev",
+//     "https://localhost:3000",
+//     "http://localhost:3000"
+//   ],
+
+//   // 3. Phase 1: Credentials (Email & Password)
+//   // Logic: In 1.4.7, 'enabled: true' handles the findUnique and password check automatically.
+//   emailAndPassword: {
+//     enabled: true,
+//     requireEmailVerification: false, // Set to true once you reach Phase 2
+//   },
+
+//   // 4. Customizing the Session & User shape
+//   user: {
+//           // 1. This "fields" block tells Better Auth: "Don't send 'banned' to Prisma"
+      
+//     additionalFields: {
+//       role: {
+//         type: "string",
+//         required: false,
+//         defaultValue: "ECD_USER", 
+//         input: false, // This prevents the client from accidentally sending "user"
+//       },
+//     },
+//   },
+
+//   // 5. Plugins
+//   plugins: [
+//     admin({
+//       // This is the secret fix: Tell the admin plugin NOT to 
+//       // use the default "user" string.
+//       defaultRole: "ECD_USER", 
+//     }), // Enables role-based logic
+//     nextCookies(), // Essential for Next.js App Router cookie handling
+//   ],
+  
+// });
+
+
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { prisma } from "@kinderz/db"; 
@@ -217,56 +286,56 @@ export const auth = betterAuth({
   // 1. Database Setup
   database: prismaAdapter(prisma, adapterConfig),
 
+  // Your specific Codespace URL
   baseURL: "https://zany-umbrella-pjq645v6jvq62769g-3000.app.github.dev",
 
-  // 2. Security & Origin Configuration
+  // 2. Security & Origin Configuration (Essential for Codespaces)
   secret: process.env.BETTER_AUTH_SECRET!,
 
-  // In 1.4.7, we use trustedOrigins + useSecureCookies to bypass the origin block in Codespaces
   advanced: {
-    // 1. Tell Better Auth it is behind a proxy (Codespaces)
-    useSecureCookies: true, 
-    // 2. This is the "Magic" setting for 1.4.7 to trust proxy headers
-    trustHost: true, 
+    useSecureCookies: true, // Forces cookies to work over the HTTPS proxy
+    trustHost: true,       // Trusts headers provided by the GitHub Proxy
   },
 
-  // This tells the server exactly which URLs to trust
   trustedOrigins: [
     "https://zany-umbrella-pjq645v6jvq62769g-3000.app.github.dev",
     "https://localhost:3000",
     "http://localhost:3000"
   ],
 
-  // 3. Phase 1: Credentials (Email & Password)
-  // Logic: In 1.4.7, 'enabled: true' handles the findUnique and password check automatically.
+  // 3. Email/Password Auth
   emailAndPassword: {
     enabled: true,
-    requireEmailVerification: false, // Set to true once you reach Phase 2
+    requireEmailVerification: false, 
   },
 
   // 4. Customizing the Session & User shape
+  // I added ecdCenterId here so the Attendance UI knows which kids to load.
   user: {
-          // 1. This "fields" block tells Better Auth: "Don't send 'banned' to Prisma"
-      
     additionalFields: {
       role: {
         type: "string",
         required: false,
         defaultValue: "ECD_USER", 
-        input: false, // This prevents the client from accidentally sending "user"
+        input: false,
       },
+      // ADDED: These link the user to the hierarchy in your schema
+      ecdCenterId: {
+        type: "string",
+        required: false,
+      },
+      districtId: {
+        type: "string",
+        required: false,
+      }
     },
   },
 
   // 5. Plugins
   plugins: [
     admin({
-      // This is the secret fix: Tell the admin plugin NOT to 
-      // use the default "user" string.
       defaultRole: "ECD_USER", 
-    }), // Enables role-based logic
-    nextCookies(), // Essential for Next.js App Router cookie handling
+    }), 
+    nextCookies(), // Critical for Next.js 15+ App Router
   ],
-  
 });
-

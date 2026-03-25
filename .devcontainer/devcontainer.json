@@ -1,9 +1,16 @@
+
+
+
 {
   "name": "Kinderz ECD Dev",
-  "image": "node:18-bullseye-slim",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:18-bullseye",
+
   "features": {
     "ghcr.io/devcontainers/features/git:1": {}
   },
+
+  "onCreateCommand": "sudo apt-get update && sudo apt-get install -y openssl libvips-dev build-essential && npm install -g typescript@5.4.5",
+
   "customizations": {
     "vscode": {
       "extensions": [
@@ -17,6 +24,8 @@
       }
     }
   },
-  "postCreateCommand": "npm install",
-  "remoteUser": "node"
+
+  "forwardPorts": [3000, 8081],
+  "remoteUser": "node",
+  "postCreateCommand": "npm install"
 }

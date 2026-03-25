@@ -36,7 +36,7 @@ export default function RegisterForm() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="border p-1 w-full"
-        />
+        /> 
       </div>
       <div>
         <label className="block">Password</label>
