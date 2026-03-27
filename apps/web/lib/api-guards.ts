@@ -6,7 +6,7 @@
 // Import the enriched session helper and its TypeScript type.
 // getSession() returns an EnrichedSession (or null) which includes role, jurisdiction, and status flags.
 import { getSession, EnrichedSession } from "@/lib/get-session";
-
+import { prisma } from "@kinderz/db";
 // -------------------------
 // Guard 1: requireSession
 // -------------------------
@@ -24,7 +24,7 @@ export async function requireSession(): Promise<EnrichedSession> {
   }
 
   // Return the enriched session for downstream guards or handlers
-  return session;
+  return session; 
 }
 
 // -------------------------
@@ -50,28 +50,53 @@ export function requireRole(session: EnrichedSession, allowedRoles: string[]): v
 // - ADMIN: full access
 // - PROVINCIAL: broad access (province-level enforcement happens in queries)
 // - SUPERVISOR/ECD_USER: may only access their assigned center
-// - AUDITOR: handled separately (district-level checks should be applied in DB queries)
-export function requireCenterAccess(
+// - AUDITOR: handled separately (district-level checks should be applied in DB queries) 
+// -------------------------
+// Guard 3: requireCenterAccess
+// -------------------------
+/**
+ * Purpose: Ensure the user can access data for a specific ECD center.
+ * Note: This is now ASYNC because Auditors require a DB lookup to verify the center's district.
+ */
+export async function requireCenterAccess(
   session: EnrichedSession,
   targetCenterId: string
-): void {
-  // ADMIN bypass
-  if (session.user.role === "ADMIN") return;
+): Promise<void> {
+  // 1. ADMIN & PROVINCIAL bypass
+  if (session.user.role === "ADMIN" || session.user.role === "PROVINCIAL") return;
 
-  // PROVINCIAL bypass for center-level checks (they oversee districts/province)
-  if (session.user.role === "PROVINCIAL") return;
-
-  // Supervisor or ECD user: enforce same-center restriction
+  // 2. Supervisor or ECD user: enforce same-center restriction
   if (session.user.role === "SUPERVISOR" || session.user.role === "ECD_USER") {
-    // If the user's assigned center doesn't match the target, deny access
     if (session.user.ecdCenterId !== targetCenterId) {
       throw new ApiError(403, `Forbidden: You do not have access to center ${targetCenterId}`);
     }
-    return; // allowed
+    return;
   }
 
-  // AUDITOR case intentionally not enforced here because auditor access is determined by district.
-  // When implementing queries, always filter centers by `District.id = session.user.districtId`.
+  // 3. AUDITOR: Verify the center belongs to their assigned district
+  if (session.user.role === "AUDITOR") {
+    // If auditor has no district assigned, deny by default
+    if (!session.user.districtId) {
+      throw new ApiError(403, "Forbidden: Auditor has no assigned district.");
+    }
+
+    const center = await prisma.ecdCenter.findUnique({
+      where: { id: targetCenterId },
+      select: { districtId: true }
+    });
+
+    if (!center) {
+      throw new ApiError(404, "Center not found.");
+    }
+
+    if (center.districtId !== session.user.districtId) {
+      throw new ApiError(403, "Forbidden: This center is outside your assigned district.");
+    }
+    return;
+  }
+
+  // Fallback for undefined roles
+  throw new ApiError(403, "Forbidden: Insufficient permissions to access center data.");
 }
 
 // -------------------------
@@ -111,7 +136,7 @@ export function requireProvinceAccess(
 // - AUDITOR: must match assigned districtId
 export function requireDistrictAccess(
   session: EnrichedSession,
-  targetDistrictId: string
+  targetDistrictId: string 
 ): void {
   // ADMIN bypass
   if (session.user.role === "ADMIN") return;

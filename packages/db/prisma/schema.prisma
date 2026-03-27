@@ -25,7 +25,7 @@ model User {
   provinceId            String?
   assignedById          String?
   documents             Document[]
-  ecdCenter     EcdCenter?   @relation("CenterStaff", fields: [ecdCenterId], references: [id])
+  ecdCenter             EcdCenter?        @relation("CenterStaff", fields: [ecdCenterId], references: [id])
   district              District?         @relation(fields: [districtId], references: [id])
   province              Province?         @relation(fields: [provinceId], references: [id])
   assignedBy            User?             @relation("AssignedUsers", fields: [assignedById], references: [id])
@@ -39,13 +39,11 @@ model User {
   accounts              Account[]
   sessions              Session[]
   verifications         Verification[]
-  markedAttendance Attendance[] @relation("MarkedAttendance")
+  markedAttendance      Attendance[]      @relation("MarkedAttendance")
   // FIXED: Relation for Staff
 
-  
   // FIXED: Opposite relation for Supervisor
-  supervisedCenter      EcdCenter?        @relation("CenterSupervisor")
-  
+  supervisedCenter EcdCenter? @relation("CenterSupervisor")
 
   @@unique([provinceId, role])
   @@index([role])
@@ -80,85 +78,86 @@ model District {
 }
 
 model EcdCenter {
-  id                     String               @id @default(cuid())
+  id                     String              @id @default(cuid())
   name                   String
   districtId             String
-  createdAt              DateTime             @default(now())
-  updatedAt              DateTime             @updatedAt
-  supervisorId           String?              @unique
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+  supervisorId           String?             @unique
   basNumber              String?
   registrationExpiryDate DateTime?
   registrationLevel      String?
-  fundingStatus          CenterFundingStatus  @default(APPROVED)
+  fundingStatus          CenterFundingStatus @default(APPROVED)
   fundingRecords         EcdCenterFunding[]
   children               Child[]
   documents              Document[]
-  district               District             @relation(fields: [districtId], references: [id], onDelete: Cascade)
-  supervisor             User? @relation("CenterSupervisor", fields: [supervisorId], references: [id], onDelete: SetNull)
+  district               District            @relation(fields: [districtId], references: [id], onDelete: Cascade)
+  supervisor             User?               @relation("CenterSupervisor", fields: [supervisorId], references: [id], onDelete: SetNull)
   practitioners          Practitioner[]
   reports                QuarterlyReport[]
   monthlyReports         MonthlyReport[]
   safetyAudits           SafetyAudit[]
   subscription           Subscription?
-  attendance Attendance[]
-  staff         User[]       @relation("CenterStaff")
+  attendance             Attendance[]
+  staff                  User[]              @relation("CenterStaff")
 
   @@index([districtId])
 }
 
 model Child {
-  id            String       @id @default(cuid())
-  fullName      String
-  funded  Boolean @default(false)
-  
+  id       String  @id @default(cuid())
+  fullName String
+  funded   Boolean @default(false)
+
   // Use 'String?' because some kids might not have their papers yet
-  birthCertificateNumber String?  @unique
-  dateOfBirth   DateTime
-  gender        String?      // From Quarterly Report Section 2
-  race          String?      // From Quarterly Report Section 2
-  disability    Boolean      @default(false)
-  disabilityType String?
-  ecdCenterId   String
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-  attendance    Attendance[]
-  ecdCenter     EcdCenter    @relation(fields: [ecdCenterId], references: [id], onDelete: Cascade)
-  
+  birthCertificateNumber String?      @unique
+  dateOfBirth            DateTime
+  gender                 String? // From Quarterly Report Section 2
+  race                   String? // From Quarterly Report Section 2
+  disability             Boolean      @default(false)
+  disabilityType         String?
+  ecdCenterId            String
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
+  attendance             Attendance[]
+  ecdCenter              EcdCenter    @relation(fields: [ecdCenterId], references: [id], onDelete: Cascade)
 
   @@index([ecdCenterId])
 }
 
 model MonthlyReport {
-  id               String              @id @default(cuid())
-  year             Int
-  month            Int
-  days             Int                 @default(22) // From Phutanang report
-  ecdCenterId      String
-  submittedById    String
-  submittedBy      User                @relation("MonthlySubmissions", fields: [submittedById], references: [id], onDelete: Cascade)
-  
+  id            String @id @default(cuid())
+  year          Int
+  month         Int
+  days          Int    @default(22) // From Phutanang report
+  ecdCenterId   String
+  submittedById String
+  submittedBy   User   @relation("MonthlySubmissions", fields: [submittedById], references: [id], onDelete: Cascade)
+  updatedAt         DateTime          @updatedAt
   // Financials - Following Bambanani Structure
-  allocation       Decimal             @default(0)
-  totalExpenditure Decimal             @default(0)
-  
-  salariesExpense  Decimal?            @default(0)
-  foodExpense      Decimal?            @default(0)
-  overheadsExpense Decimal?            @default(0)
-  otherExpense     Decimal?            @default(0)
+  allocation       Decimal @default(0)
+  totalExpenditure Decimal @default(0)
+
+  salariesExpense  Decimal?       @default(0)
+  foodExpense      Decimal?       @default(0)
+  overheadsExpense Decimal?       @default(0)
+  otherExpense     Decimal?       @default(0)
+  // This allows a report to have multiple findings
+  auditFindings    AuditFinding[]
 
   // Variance tracking
-  salariesVariance Decimal?            @default(0)
-  foodVariance     Decimal?            @default(0)
-  overheadsVariance Decimal?           @default(0)
+  salariesVariance  Decimal? @default(0)
+  foodVariance      Decimal? @default(0)
+  overheadsVariance Decimal? @default(0)
 
-  attendanceCount  Int?
-  childrenFunded   Int?
-  notes            String?
-  submittedAt      DateTime?
-  status           SubmissionStatus    @default(DRAFT)
-  documents        Document[]
-  allocations      MonthlyAllocation[]
-  ecdCenter        EcdCenter           @relation(fields: [ecdCenterId], references: [id], onDelete: Cascade)
+  attendanceCount Int?
+  childrenFunded  Int?
+  notes           String?
+  submittedAt     DateTime?
+  status          SubmissionStatus    @default(DRAFT)
+  documents       Document[]
+  allocations     MonthlyAllocation[]
+  ecdCenter       EcdCenter           @relation(fields: [ecdCenterId], references: [id], onDelete: Cascade)
 
   @@unique([ecdCenterId, year, month])
   @@index([ecdCenterId])
@@ -166,35 +165,35 @@ model MonthlyReport {
 
 // Specifically for the "Kids Safety Monitoring Tool"
 model SafetyAudit {
-  id            String        @id @default(cuid())
-  ecdCenterId   String
-  auditorId     String
-  auditDate     DateTime      @default(now())
-  
+  id          String   @id @default(cuid())
+  ecdCenterId String
+  auditorId   String
+  auditDate   DateTime @default(now())
+
   // Checklist Items (Sample from Safety Tool)
-  fireSafety    Boolean       @default(false)
-  cleanWater    Boolean       @default(false)
-  secureFencing Boolean       @default(false)
-  firstAidKit   Boolean       @default(false)
-  
-  comments      String?
-  status        FindingStatus @default(PENDING)
-  
-  ecdCenter     EcdCenter     @relation(fields: [ecdCenterId], references: [id])
-  auditor       User          @relation("AuditorSafetyAudits", fields: [auditorId], references: [id])
+  fireSafety    Boolean @default(false)
+  cleanWater    Boolean @default(false)
+  secureFencing Boolean @default(false)
+  firstAidKit   Boolean @default(false)
+
+  comments String?
+  status   FindingStatus @default(OPEN)
+
+  ecdCenter EcdCenter @relation(fields: [ecdCenterId], references: [id])
+  auditor   User      @relation("AuditorSafetyAudits", fields: [auditorId], references: [id])
 }
 
 // Keep all existing system models below
 model Subscription {
-  id           String             @id @default(cuid())
-  ecdCenterId  String             @unique
-  status       SubscriptionStatus @default(INACTIVE)
-  liable       Boolean            @default(false)
-  graceUntil   DateTime?
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
-  payments     PaymentProof[]
-  ecdCenter    EcdCenter          @relation(fields: [ecdCenterId], references: [id], onDelete: Cascade)
+  id          String             @id @default(cuid())
+  ecdCenterId String             @unique
+  status      SubscriptionStatus @default(INACTIVE)
+  liable      Boolean            @default(false)
+  graceUntil  DateTime?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  payments    PaymentProof[]
+  ecdCenter   EcdCenter          @relation(fields: [ecdCenterId], references: [id], onDelete: Cascade)
 }
 
 model PaymentProof {
@@ -231,46 +230,45 @@ model QuarterlyReport {
   createdAt         DateTime              @default(now())
   updatedAt         DateTime              @updatedAt
   attendance        Attendance[]
-  findings          AuditFinding?
+  findings          AuditFinding?         @relation(fields: [auditFindingId], references: [id])
   documents         Document[]
   allocations       FinancialAllocation[]
   createdBy         User                  @relation("CreatedReports", fields: [createdById], references: [id], onDelete: Cascade)
   ecdCenter         EcdCenter             @relation(fields: [ecdCenterId], references: [id], onDelete: Cascade)
+  auditFindingId    String?
 
   @@unique([ecdCenterId, year, quarter])
 }
 
 model Attendance {
-  id          String   @id @default(cuid())
-  date        DateTime @db.Date // Ensures we only store the date, not the time
-  
+  id   String   @id @default(cuid())
+  date DateTime @db.Date // Ensures we only store the date, not the time
+
   // Use a String to allow for "PRESENT", "ABSENT", "SICK"
-  status      String   @default("PRESENT") 
-  
+  status String @default("PRESENT")
+
   // Optional notes for "SICK" reasons (e.g., "Flu symptoms")
-  notes       String?  @db.Text
+  notes String? @db.Text
 
   // Relations
-  childId     String
-  child       Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
-
-
+  childId String
+  child   Child  @relation(fields: [childId], references: [id], onDelete: Cascade)
 
   // Direct link to Center for faster filtering/multi-tenancy
   ecdCenterId String
   ecdCenter   EcdCenter @relation(fields: [ecdCenterId], references: [id])
 
   // Audit: Who marked this?
-  markedById  String
-  markedBy    User     @relation("MarkedAttendance", fields: [markedById], references: [id])
+  markedById String
+  markedBy   User   @relation("MarkedAttendance", fields: [markedById], references: [id])
 
   // Make reportId optional so you can mark attendance daily 
   // without needing the report to exist yet
-  reportId    String?
-  report      QuarterlyReport? @relation(fields: [reportId], references: [id])
+  reportId String?
+  report   QuarterlyReport? @relation(fields: [reportId], references: [id])
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Crucial: One record per child per day
   @@unique([childId, date])
@@ -308,16 +306,22 @@ model FinancialAllocation {
 }
 
 model AuditFinding {
-  id           String          @id @default(cuid())
-  comments     String[]
-  compliant    Boolean
-  status       FindingStatus   @default(PENDING)
-  reviewedById String?
-  reportId     String          @unique
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
-  report       QuarterlyReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  reviewedBy   User?           @relation("FindingReviewedBy", fields: [reviewedById], references: [id])
+  id       String        @id @default(cuid())
+  reportId String // No @unique (allows multiple issues per month)
+  report   MonthlyReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  content  String // The description of the error
+  severity String        @default("MEDIUM") // LOW, MEDIUM, HIGH, CRITICAL
+  status   FindingStatus @default(OPEN)
+
+  comments        String[] // The chat log between Auditor and Supervisor
+  createdBy       String // The Auditor's User ID
+  // This connects back to User.auditFindingsReviewed
+  reviewedBy      User?             @relation("FindingReviewedBy", fields: [reviewedById], references: [id])
+  reviewedById    String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  QuarterlyReport QuarterlyReport[]
 }
 
 model MonthlyAllocation {
@@ -442,6 +446,7 @@ enum DocumentCategory {
 
 enum SubmissionStatus {
   DRAFT
+  REVISION_REQUIRED
   SUBMITTED
   SUBMITTED_TO_PROVINCE // For provincial review process
   LATE
@@ -469,9 +474,9 @@ enum PaymentStatus {
 }
 
 enum FindingStatus {
-  PENDING
-  APPROVED
-  FLAGGED
-  CORRECTIONS_REQUIRED
-  RESOLVED_BY_SUPERVISOR // Add this status to allow supervisors to resolve findings without needing provincial intervention
+  OPEN // Auditor just created it
+  CORRECTIONS_REQUIRED // Auditor sent it to Supervisor
+  RESOLVED_BY_SUPERVISOR // Supervisor claims it is fixed
+  RESOLVED // Auditor/Provincial confirms it is fixed and closes it
+  DISPUTED // Supervisor says "I didn't do anything wrong"
 }
