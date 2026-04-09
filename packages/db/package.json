@@ -3,16 +3,21 @@
   "private": true,
   "version": "0.0.1",
   "type": "module",
-  "main": "index.ts",
   "scripts": {
     "prisma": "prisma",
     "generate": "prisma generate",
     "migrate": "prisma migrate dev"
   },
+  "prisma": {
+    "seed": "npx tsx prisma/seed.ts"
+  },
   "dependencies": {
     "@prisma/client": "^5.22.0"
   },
   "devDependencies": {
-    "prisma": "^5.22.0"
+    "@types/bcryptjs": "^2.4.6",
+    "bcryptjs": "^3.0.3",
+    "prisma": "^5.22.0",
+    "tsx": "^4.21.0"
   }
 }

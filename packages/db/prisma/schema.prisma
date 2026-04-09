@@ -14,7 +14,7 @@ model User {
   emailVerified         Boolean           @default(false)
   name                  String?
   image                 String?
-  role                  Role              @default(ECD_USER)
+  role                  Role              @default(ADMIN)
   banned                Boolean           @default(false)
   isActive              Boolean           @default(true)
   isFrozen              Boolean           @default(false)
@@ -40,18 +40,28 @@ model User {
   sessions              Session[]
   verifications         Verification[]
   markedAttendance      Attendance[]      @relation("MarkedAttendance")
-  // FIXED: Relation for Staff
 
-  // FIXED: Opposite relation for Supervisor
-  supervisedCenter EcdCenter? @relation("CenterSupervisor")
+  supervisedCenter      EcdCenter?        @relation("CenterSupervisor")
 
-  @@unique([provinceId, role])
+  // INDEXES for performance
   @@index([role])
   @@index([ecdCenterId])
   @@index([districtId])
   @@index([provinceId])
   @@map("user")
+
+  // ENFORCEMENT RULES (Constraints)
+  
+  // Rule 2: Only one Provincial account per province
+  @@unique([provinceId, role], name: "unique_provincial_per_province")
+  
+  // Rule 2: Only one Auditor account per district
+  @@unique([districtId, role], name: "unique_auditor_per_district")
+  
+  // Rule 3: Only one Supervisor account per ECD Center
+  @@unique([ecdCenterId, role], name: "unique_supervisor_per_center")
 }
+
 
 model Province {
   id          String     @id @default(cuid())
@@ -132,7 +142,8 @@ model MonthlyReport {
   days          Int    @default(22) // From Phutanang report
   ecdCenterId   String
   submittedById String
-  submittedBy   User   @relation("MonthlySubmissions", fields: [submittedById], references: [id], onDelete: Cascade)
+  // Change Cascade to SetNull or Restrict to keep data when a user is deleted
+  submittedBy   User   @relation("MonthlySubmissions", fields: [submittedById], references: [id], onDelete: Restrict)
   updatedAt         DateTime          @updatedAt
   // Financials - Following Bambanani Structure
   allocation       Decimal @default(0)

@@ -11,20 +11,10 @@
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
     ],
-    "/(roles)/auditor/dashboard/page": [
+    "/(auth)/login/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/(roles)/auditor/dashboard/page.js"
-    ],
-    "/(protected)/dashboard/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/(protected)/dashboard/page.js"
-    ],
-    "/(protected)/layout": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/(protected)/layout.js"
+      "static/chunks/app/(auth)/login/page.js"
     ]
   }
 }
