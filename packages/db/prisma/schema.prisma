@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client-js" 
 }
 
 datasource db {
@@ -14,7 +14,7 @@ model User {
   emailVerified         Boolean           @default(false)
   name                  String?
   image                 String?
-  role                  Role              @default(ADMIN)
+  role                  Role              @default(ECD_USER)
   banned                Boolean           @default(false)
   isActive              Boolean           @default(true)
   isFrozen              Boolean           @default(false)
@@ -65,14 +65,14 @@ model User {
 
 model Province {
   id          String     @id @default(cuid())
-  name        String
+  name        String     @unique
   districts   District[]
   provincials User[]
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
-  @@index([name])
-}
+  @@index([name])   
+} 
 
 model District {
   id         String      @id @default(cuid())
@@ -445,7 +445,7 @@ enum Role {
   PROVINCIAL
 }
 
-enum DocumentCategory {
+enum DocumentCategory { 
   FOOD
   SALARIES
   OVERHEADS
