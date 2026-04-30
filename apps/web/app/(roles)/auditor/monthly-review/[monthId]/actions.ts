@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { SubmissionStatus } from "@prisma/client";
 import { Decimal } from "@prisma/client/runtime/library";
 import { redirect } from "next/navigation";
-import { getSession } from "@/lib/get-session";
+import { getSession } from "@/lib/get-session"; 
 
 /**
  * Calculates how many funded children met the 80% attendance threshold.

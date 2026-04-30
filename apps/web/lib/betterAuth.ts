@@ -6,7 +6,7 @@ import { nextCookies } from "better-auth/next-js";
 import { hash, compare } from "bcryptjs";
 
 const adapterConfig = {
-  provider: "postgresql" as const,
+  provider: "postgresql" as const,     
 };
 
 export const auth = betterAuth({

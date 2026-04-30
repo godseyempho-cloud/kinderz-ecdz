@@ -2,8 +2,10 @@
 
 import { prisma } from "@kinderz/db"; 
 import { Role } from "@prisma/client";
-import * as crypto from "node:crypto"; // Secure token generation
+import * as crypto from "node:crypto";
 import { revalidatePath } from "next/cache";
+import { auth } from "@/lib/betterAuth"; // Add this
+import { headers } from "next/headers"; // Add this
 
 export async function createInvite(data: {
   email: string;
@@ -12,45 +14,58 @@ export async function createInvite(data: {
   districtId?: string;
 }) {
   try {
-    const emailLower = data.email.toLowerCase();
+    const session = await auth.api.getSession({ headers: await headers() });
+    
+    // 1. Auth Guard: Must be logged in
+    if (!session) return { success: false, error: "Unauthorized" };
 
-    // 1. Check if a User with this email already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email: emailLower }
-    });
-    if (existingUser) {
-      return { success: false, error: "A user with this email already exists." };
+    const inviterRole = session.user.role;
+    const inviterProvinceId = session.user.provinceId;
+
+    // 2. Permission Matrix: Prevent illegal invitations
+    // Rule: Only Admin can invite Provincials
+    if (data.role === "PROVINCIAL" && inviterRole !== "ADMIN") {
+      return { success: false, error: "Only Admins can invite Provincial Heads." };
     }
 
-    // 2. Rule Enforcement: Check if District/Province already has an assigned role
-    // This prevents double-assigning auditors to the same district (Rule 2)
-    if (data.districtId && data.role === "AUDITOR") {
-      const existingAuditor = await prisma.user.findFirst({
-        where: { 
-          districtId: data.districtId,
-          role: "AUDITOR" 
+    // Rule: Provincial users can ONLY invite to their own Province
+    if (inviterRole === "PROVINCIAL") {
+      // If they try to invite an Auditor, verify the district belongs to their province
+      if (data.districtId) {
+        const targetDistrict = await prisma.district.findUnique({
+          where: { id: data.districtId },
+          select: { provinceId: true }
+        });
+
+        if (targetDistrict?.provinceId !== inviterProvinceId) {
+          return { success: false, error: "You cannot invite an auditor to a district outside your province." };
         }
-      });
-      if (existingAuditor) {
-        return { success: false, error: "This district already has an assigned Auditor." };
       }
     }
 
-    // 3. Generate a secure random token
+    const emailLower = data.email.toLowerCase().trim();
+
+    // 3. Existing User Check
+    const existingUser = await prisma.user.findUnique({ where: { email: emailLower } });
+    if (existingUser) return { success: false, error: "User already exists." };
+
+    // 4. One Auditor Per District Rule
+    if (data.districtId && data.role === "AUDITOR") {
+      const existingAuditor = await prisma.user.findFirst({
+        where: { districtId: data.districtId, role: "AUDITOR" }
+      });
+      if (existingAuditor) return { success: false, error: "District already has an Auditor." };
+    }
+
+    // 5. Token & Invite Creation
     const token = crypto.randomBytes(32).toString("hex");
-    
-    // 4. Set expiry to 7 days from now
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
 
-    // 5. Create the invite record
-    // We use 'upsert' or delete existing pending invites for the same email 
-    // to keep the database clean
-    await prisma.invite.deleteMany({
-      where: { email: emailLower }
-    });
+    // Clean up old invites for this email
+    await prisma.invite.deleteMany({ where: { email: emailLower } });
 
-    const invite = await prisma.invite.create({
+    await prisma.invite.create({
       data: {
         email: emailLower,
         role: data.role,
@@ -61,20 +76,14 @@ export async function createInvite(data: {
       },
     });
 
-    // 6. Construct Link 
-    // Uses the Environment variable for the domain (e.g., tinyiko.com or localhost)
-    const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL}/register?token=${token}`;
+    const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL}/register/${token}`; // Note: added /[token] path
 
-    // 7. Refresh the UI
-    // This ensures the District Card instantly shows 'Pending' or updates the list
-    revalidatePath("/provincial/districts"); 
+    revalidatePath("/provincial"); 
     
-    // In a real production app, you would call an email service here (e.g., Resend)
-    // For now, we return the link so you can manually copy/paste it for testing
     return { success: true, link: inviteLink };
 
   } catch (error) {
     console.error("Invite Error:", error);
-    return { success: false, error: "Failed to create invite. Please try again." };
+    return { success: false, error: "Server error during invitation." };
   }
-} 
+}

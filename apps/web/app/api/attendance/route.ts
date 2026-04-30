@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 const attendanceSchema = z.object({
-  date: z.string(), // "YYYY-MM-DD"
+  date: z.string(), 
   records: z.array(   
     z.object({
       childId: z.string(),
@@ -16,15 +16,12 @@ const attendanceSchema = z.object({
 
 export async function POST(request: Request) {
   const session = await auth.api.getSession({ headers: request.headers });
-
   const user = session?.user;
-  const role = user?.role;
   const ecdCenterId = user?.ecdCenterId;
 
-  // Strict Role Check - Ensure session exists and user is assigned to a center
-  if (!session || !user || role !== "ECD_USER" || !ecdCenterId) {
+  if (!session || !user || user.role !== "ECD_USER" || !ecdCenterId) {
     return NextResponse.json(
-      { error: "Unauthorized: Only ECD Users can mark attendance" },
+      { error: "Unauthorized: Access restricted to assigned center staff" },
       { status: 403 }
     );
   }
@@ -32,9 +29,20 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { date, records } = attendanceSchema.parse(body);
-    
-    // Ensure the date is handled as a UTC midnight date to avoid timezone shifts
     const attendanceDate = new Date(date);
+
+    // Optimized Security Check: Verify all children belong to this center
+    const childIds = records.map(r => r.childId);
+    const authorizedChildrenCount = await prisma.child.count({
+      where: {
+        id: { in: childIds },
+        ecdCenterId: ecdCenterId
+      }
+    });
+
+    if (authorizedChildrenCount !== records.length) {
+      return NextResponse.json({ error: "Unauthorized: Some child records do not belong to your center" }, { status: 403 });
+    }
 
     const results = await prisma.$transaction(
       records.map((record) =>
@@ -46,7 +54,7 @@ export async function POST(request: Request) {
             },
           },
           update: {
-            status: record.status, // Directly saving the string enum
+            status: record.status,
             notes: record.notes ?? "",
             markedById: user.id,
           },

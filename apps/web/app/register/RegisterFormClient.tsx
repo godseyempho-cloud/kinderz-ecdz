@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { registerAuditor, type RegisterActionResponse } from "@/actions/register";
+// Updated to match the renamed server action
+import { registerUser, type RegisterActionResponse } from "@/actions/register";
 
 interface Props {
   token: string;
@@ -24,7 +25,8 @@ export default function RegisterFormClient({ token, email, role }: Props) {
     setError(null);
 
     const formData = new FormData(e.currentTarget);
-    const result: RegisterActionResponse = await registerAuditor(formData);
+    // Calling the renamed action here
+    const result: RegisterActionResponse = await registerUser(formData);
 
     if (result.success) {
       router.push("/login?registered=true");

@@ -2,10 +2,10 @@
 import { useFormStatus } from "react-dom";
 
 export function SubmitButtons() {
-  const { pending } = useFormStatus();
+  const { pending } = useFormStatus(); 
 
   return (
-    <div className="grid gap-3">
+    <div className="grid gap-3">  
       <button 
         type="submit" 
         name="status" 

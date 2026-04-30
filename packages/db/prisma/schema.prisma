@@ -4,7 +4,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  url      = env("DATABASE_URL") 
 }
 
 model User {
@@ -212,7 +212,7 @@ model PaymentProof {
   subscriptionId String
   uploadedById   String
   category       DocumentCategory
-  fileUrl        String
+  storageKey     String
   comment        String?
   status         PaymentStatus    @default(PENDING)
   reviewedById   String?
@@ -290,7 +290,7 @@ model Attendance {
 model Document {
   id              String           @id @default(cuid())
   filename        String
-  url             String
+  storageKey      String
   category        DocumentCategory
   comment         String?
   uploadedById    String
