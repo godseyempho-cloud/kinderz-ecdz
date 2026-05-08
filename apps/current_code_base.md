@@ -11,7 +11,7 @@ interface InviteModalProps {
 }
 
 export default function InviteAuditorModal({ districtId, districtName, onClose }: InviteModalProps) {
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(""); 
   const [loading, setLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
